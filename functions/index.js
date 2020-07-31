@@ -24,6 +24,39 @@ firebase.initializeApp(firebaseConfig)
 
 const db = admin.firestore()
 
+const FBauth = (req, res, next) => {
+  let idToken
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith('Bearer ')
+  ) {
+    idToken = req.headers.authorization.split('Bearer ')[1]
+  } else {
+    console.error('No token found')
+    return res.status(403).json({ error: 'Unauthorized' })
+  }
+
+  admin
+    .auth()
+    .verifyIdToken(idToken)
+    .then(decodedToken => {
+      req.user = decodedToken
+      return db
+        .collection('users')
+        .where('userId', '==', req.user.uid)
+        .limit(1)
+        .get()
+    })
+    .then(data => {
+      req.user.email = data.docs[0].data().email
+      return next()
+    })
+    .catch(err => {
+      console.error('Error while verifying token ', err)
+      return res.status(403).json(err)
+    })
+}
+
 app.get('/test', (req, res) => {
   db.collection('test')
     .get()
@@ -55,90 +88,12 @@ app.post('/test', (req, res) => {
     })
 })
 
+const isEmpty = string => {
+  if (string.trim() === '') return true
+  else return false
+}
+
 //signup route
-// app.post('/signup', (req, res) => {
-//   const newUser = {
-//     email: req.body.email,
-//     password: req.body.password,
-//     firstName: req.body.firstName,
-//     lastName: req.body.lastName,
-//     degree: req.body.degree,
-//     uniName: req.body.uniName,
-//     uniYear: req.body.uniYear,
-//     describeSelf: req.body.describeSelf,
-//     describeFriend: req.body.describeFriend,
-//     avatar: {
-//       clotheType: req.body.clotheType,
-//       hairColour: req.body.hairColour,
-//       skinColour: req.body.skinColour,
-//       topType: req.body.topType
-//     },
-//     subjects: req.body.subjects
-//   }
-
-//   let token, userId
-//   db.doc(`/users/${newUser.email}`)
-//     .get()
-//     .then(doc => {
-//       if (doc.exists) {
-//         return res.status(400).json({ email: 'This email is already taken' })
-//       } else {
-//         firebase
-//           .auth()
-//           .createUserWithEmailAndPassword(newUser.email, newUser.password)
-//       }
-//     })
-//     .then(data => {
-//       userId = data.user.uid
-//       return data.user.getIdToken()
-//     })
-//     .then(idToken => {
-//       token = idToken
-//       const userDetails = {
-//         userId,
-//         firstName: newUser.firstName,
-//         lastName: newUser.lastName,
-//         degree: newUser.degree,
-//         uniName: newUser.uniName,
-//         uniYear: newUser.uniYear,
-//         describeSelf: newUser.describeSelf,
-//         describeFriend: newUser.describeFriend,
-//         avatar: {
-//           clotheType: newUser.avatar.clotheType,
-//           hairColour: newUser.avatar.hairColour,
-//           skinColour: newUser.avatar.skinColour,
-//           topType: newUser.avatar.topType
-//         },
-//         subjects: newUser.subjects
-//       }
-//       return db.doc(`users/${newUser.email}`).set(userDetails)
-//     })
-//     .then(() => {
-//       return res.status(201).json({ token })
-//     })
-//     .catch(err => {
-//       console.error(err)
-//       if (err.code === 'auth/email-already-in-use') {
-//         res.status(400).json({ email: 'Email is already in use' })
-//       } else {
-//         return res.status(500).json({ error: err.code })
-//       }
-//     })
-
-//   firebase
-//     .auth()
-//     .createUserWithEmailAndPassword(newUser.email, newUser.password)
-//     .then(data => {
-//       return res
-//         .status(201)
-//         .json({ message: `user ${data.user.uid} signed up successfully` })
-//     })
-//     .catch(err => {
-//       console.error(err)
-//       return res.status(500).json({ error: err.code })
-//     })
-// })
-
 app.post('/signup', (req, res) => {
   const newUser = {
     email: req.body.email,
@@ -197,17 +152,62 @@ app.post('/signup', (req, res) => {
       return db.doc(`/users/${newUser.email}`).set(userCredentials)
     })
     .then(() => {
-      return res.status(201).json({ token })
+      return res.status(201).json({ token, email: newUser.email })
     })
     .catch(err => {
       console.error(err)
       if (err.code === 'auth/email-already-in-use') {
-        return res.status(400).json({ email: 'Email is already is use' })
+        return res.status(400).json({ error: 'Email is already is use' })
       } else {
         return res
           .status(500)
-          .json({ general: 'Something went wrong, please try again' })
+          .json({ error: 'Something went wrong, please try again' })
       }
+    })
+})
+
+// login route
+app.post('/login', (req, res) => {
+  const user = {
+    email: req.body.email,
+    password: req.body.password
+  }
+
+  firebase
+    .auth()
+    .signInWithEmailAndPassword(user.email, user.password)
+    .then(data => {
+      return data.user.getIdToken()
+    })
+    .then(token => {
+      return res.json({ token, email: user.email })
+    })
+    .catch(err => {
+      console.error(err)
+      if (err.code === 'auth/wrong-password') {
+        return res
+          .status(403)
+          .json({ error: 'Wrong credentials, please try again' })
+      } else {
+        return res.status(500).json({ error: err.code })
+      }
+    })
+})
+
+// get users route
+app.get('/user', FBauth, (req, res) => {
+  let userData = {}
+  db.doc(`/users/${req.user.email}`)
+    .get()
+    .then(doc => {
+      if (doc.exists) {
+        userData = doc.data()
+      }
+      return res.json(userData)
+    })
+    .catch(err => {
+      console.error(err)
+      return res.status(500).json({ error: err.code })
     })
 })
 
