@@ -4,6 +4,18 @@ const admin = require('firebase-admin')
 const express = require('express')
 const app = express()
 
+const PersonalityInsightsV3 = require('ibm-watson/personality-insights/v3')
+const { IamAuthenticator } = require('ibm-watson/auth')
+
+const personalityInsights = new PersonalityInsightsV3({
+  version: '2017-10-13',
+  authenticator: new IamAuthenticator({
+    apikey: process.env.IBM_API_KEY
+  }),
+  url:
+    'https://api.au-syd.personality-insights.watson.cloud.ibm.com/instances/89379318-f4e6-4e38-8286-1c4e308351ee'
+})
+
 admin.initializeApp({
   credential: admin.credential.cert(require('./admin.json'))
 })
@@ -124,9 +136,23 @@ app.post('/signup', (req, res) => {
         subjects: {
           ids: newUser.subjectIds,
           codes: newUser.subjectCodes
-        }
+        },
+        personality: {}
       }
-      return db.doc(`/users/${newUser.email}`).set(userCredentials)
+      // use ibm watson to guage personality, values and needs
+      let text = newUser.describeSelf.concat(newUser.describeFriend)
+
+      personalityInsights
+        .profile({
+          content: text,
+          contentType: 'text/plain',
+          consumptionPreferences: false,
+          rawScores: false
+        })
+        .then(response => {
+          userCredentials.personality = response.result
+          return db.doc(`/users/${newUser.email}`).set(userCredentials)
+        })
     })
     .then(() => {
       return res.status(201).json({ token, email: newUser.email })
@@ -297,6 +323,45 @@ app.post('/degree', (req, res) => {
     .then(doc => {
       if (doc.exists) {
         return res.json({ degreeName: doc.data().degreeName })
+      } else {
+        return res.json({ error: 'no degree with that id' })
+      }
+    })
+    .catch(err => {
+      console.error(err)
+      return res.status(500).json({ error: err.code })
+    })
+})
+
+app.post('/ibmtest', (req, res) => {
+  personalityInsights
+    .profile({
+      content: req.body.text,
+      contentType: 'text/plain',
+      consumptionPreferences: false,
+      rawScores: false
+    })
+    .then(response => {
+      res.json({ ok: response.result })
+      //   console.log(JSON.stringify(response.result, null, 2))
+    })
+    .catch(err => {
+      res.json({ error: err })
+      //   console.log('error:', err)
+    })
+})
+
+app.post('/match', (req, res) => {
+  const matchByDegree = req.body.matchByDegree
+  const matchBySubject = req.body.matchBySubjects
+})
+
+app.get('/person', (req, res) => {
+  db.doc(`/degrees/jeeeezzz@email.com`)
+    .get()
+    .then(doc => {
+      if (doc.exists) {
+        return res.json({ personality: doc.data().degreeName })
       } else {
         return res.json({ error: 'no degree with that id' })
       }
