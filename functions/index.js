@@ -69,7 +69,8 @@ app.post('/signup', (req, res) => {
     password: req.body.password,
     firstName: req.body.firstName,
     lastName: req.body.lastName,
-    degree: req.body.degree,
+    degreeId: req.body.degreeId,
+    degreeName: req.body.degreeName,
     uniName: req.body.uniName,
     uniYear: req.body.uniYear,
     describeSelf: req.body.describeSelf,
@@ -78,7 +79,8 @@ app.post('/signup', (req, res) => {
     hairColour: req.body.hairColour,
     skinColour: req.body.skinColour,
     topType: req.body.topType,
-    subjects: req.body.subjects
+    subjectCodes: req.body.subjectCodes,
+    subjectIds: req.body.subjectIds
   }
 
   let token, userId
@@ -94,12 +96,10 @@ app.post('/signup', (req, res) => {
       }
     })
     .then(data => {
-      console.log('COMING HERE: 1')
       userId = data.user.uid
       return data.user.getIdToken()
     })
     .then(idToken => {
-      console.log('COMING HERE: 2')
       token = idToken
       const userCredentials = {
         userId,
@@ -107,7 +107,10 @@ app.post('/signup', (req, res) => {
         createdAt: new Date().toISOString(),
         firstName: newUser.firstName,
         lastName: newUser.lastName,
-        degree: null,
+        degree: {
+          name: newUser.degreeName,
+          id: newUser.degreeId
+        },
         uniName: newUser.uniName,
         uniYear: newUser.uniYear,
         describeSelf: newUser.describeSelf,
@@ -118,33 +121,14 @@ app.post('/signup', (req, res) => {
           skinColour: newUser.skinColour,
           topType: newUser.topType
         },
-        subjects: newUser.subjects
+        subjects: {
+          ids: newUser.subjectIds,
+          codes: newUser.subjectCodes
+        }
       }
-      db.collection('degrees')
-        .where('degreeName', '==', newUser.degree)
-        .where('uniName', '==', newUser.uniName)
-        .get()
-        .then(snapshot => {
-          if (snapshot.empty) {
-            db.collection('degrees')
-              .add({
-                degreeName: newUser.degree,
-                uniName: newUser.uniName
-              })
-              .then(degreeRes => {
-                userCredentials.degree = degreeRes.id
-                return db.doc(`/users/${newUser.email}`).set(userCredentials)
-              })
-          } else {
-            snapshot.forEach(doc => {
-              userCredentials.degree = doc.id
-            })
-            return db.doc(`/users/${newUser.email}`).set(userCredentials)
-          }
-        })
+      return db.doc(`/users/${newUser.email}`).set(userCredentials)
     })
     .then(() => {
-      console.log('COMING HERE: 3')
       return res.status(201).json({ token, email: newUser.email })
     })
     .catch(err => {
@@ -261,6 +245,25 @@ app.post('/subjects', (req, res) => {
     })
 })
 
+// get subject codes
+app.post('/subjectcodes', (req, res) => {
+  let data = {
+    subjectCodes: []
+  }
+  req.body.subjectIds.forEach((subjectId, i) => {
+    db.doc(`/subjects/${subjectId}`)
+      .get()
+      .then(doc => {
+        if (doc.exists) {
+          data.subjectCodes.push(doc.data().subjectCode)
+        }
+        if (i === req.body.subjectIds.length - 1) {
+          return res.json(data)
+        }
+      })
+  })
+})
+
 app.post('/degrees', (req, res) => {
   const degreesRef = db.collection('degrees')
   degreesRef
@@ -279,6 +282,23 @@ app.post('/degrees', (req, res) => {
             degreeName: doc.data().degreeName
           })
         })
+      }
+    })
+    .catch(err => {
+      console.error(err)
+      return res.status(500).json({ error: err.code })
+    })
+})
+
+// get degree name singular
+app.post('/degree', (req, res) => {
+  db.doc(`/degrees/${req.body.degreeId}`)
+    .get()
+    .then(doc => {
+      if (doc.exists) {
+        return res.json({ degreeName: doc.data().degreeName })
+      } else {
+        return res.json({ error: 'no degree with that id' })
       }
     })
     .catch(err => {

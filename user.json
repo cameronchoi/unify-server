@@ -1,0 +1,24 @@
+{
+  "describeSelf": "I don’t know man",
+  "describeFriend": "What are you saying?",
+  "createdAt": "2020-08-01T00:43:39.765Z",
+  "degree": "7RWMsZCNWQnKysJFF1hc",
+  "email": "cameron@email.com",
+  "subjects": [
+    "TmGhCpG3VfUnLo5PgOL9",
+    "EAjzSkmydGDy2cOTrXrc",
+    "U2TYJFkiwWkV3j57jjv3",
+    "u7CBrclxIdknkAPwE0gA"
+  ],
+  "userId": "VyqTsQsB6WRGvKrLMFwvDlYfETJ2",
+  "uniYear": "2",
+  "uniName": "University of Sydney",
+  "lastName": "Choi",
+  "firstName": "Cameron",
+  "avatar": {
+    "skinColour": "Black",
+    "hairColour": "BrownDark",
+    "topType": "ShortHairDreads01",
+    "clotheType": "GraphicShirt"
+  }
+}
