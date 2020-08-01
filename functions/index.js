@@ -137,7 +137,7 @@ app.post('/signup', (req, res) => {
           ids: newUser.subjectIds,
           codes: newUser.subjectCodes
         },
-        personality: {}
+        watsonInsights: {}
       }
       // use ibm watson to guage personality, values and needs
       let text = newUser.describeSelf.concat(newUser.describeFriend)
@@ -150,7 +150,7 @@ app.post('/signup', (req, res) => {
           rawScores: false
         })
         .then(response => {
-          userCredentials.personality = response.result
+          userCredentials.watsonInsights = response.result
           return db.doc(`/users/${newUser.email}`).set(userCredentials)
         })
     })
@@ -214,7 +214,8 @@ app.get('/user', FBauth, (req, res) => {
     })
 })
 
-app.post('/user', (req, res) => {
+// find if email exists
+app.post('/email', (req, res) => {
   db.doc(`/users/${req.body.email}`)
     .get()
     .then(doc => {
@@ -229,6 +230,7 @@ app.post('/user', (req, res) => {
     })
 })
 
+// find if university exists
 app.post('/uni', (req, res) => {
   db.doc(`/universities/${req.body.uniName}`)
     .get()
@@ -245,6 +247,7 @@ app.post('/uni', (req, res) => {
     })
 })
 
+// find if subject exists
 app.post('/subjects', (req, res) => {
   const subjectsRef = db.collection('subjects')
   subjectsRef
@@ -271,25 +274,7 @@ app.post('/subjects', (req, res) => {
     })
 })
 
-// get subject codes
-app.post('/subjectcodes', (req, res) => {
-  let data = {
-    subjectCodes: []
-  }
-  req.body.subjectIds.forEach((subjectId, i) => {
-    db.doc(`/subjects/${subjectId}`)
-      .get()
-      .then(doc => {
-        if (doc.exists) {
-          data.subjectCodes.push(doc.data().subjectCode)
-        }
-        if (i === req.body.subjectIds.length - 1) {
-          return res.json(data)
-        }
-      })
-  })
-})
-
+// find if degree exists
 app.post('/degrees', (req, res) => {
   const degreesRef = db.collection('degrees')
   degreesRef
@@ -351,19 +336,100 @@ app.post('/ibmtest', (req, res) => {
     })
 })
 
-app.post('/match', (req, res) => {
-  const matchByDegree = req.body.matchByDegree
-  const matchBySubject = req.body.matchBySubjects
-})
+// utility function for finding the index of the person with the most similar personality, values, and needs
+const findBestMatch = (myResponse, responses) => {
+  let rank
+  let bestMatch
+  responses.forEach((response, index) => {
+    let currentRank = 0
+    response.watsonInsights.personality.forEach((pers, i) => {
+      const myPercentile = myResponse.watsonInsights.personality[i].percentile
+      const theirPercentile = pers.percentile
+      if (myPercentile > theirPercentile) {
+        currentRank += myPercentile - theirPercentile
+      } else {
+        currentRank += theirPercentile - myPercentile
+      }
+    })
+    response.watsonInsights.needs.forEach((need, i) => {
+      const myPercentile = myResponse.watsonInsights.needs[i].percentile
+      const theirPercentile = need.percentile
+      if (myPercentile > theirPercentile) {
+        currentRank += myPercentile - theirPercentile
+      } else {
+        currentRank += theirPercentile - myPercentile
+      }
+    })
+    response.watsonInsights.values.forEach((value, i) => {
+      const myPercentile = myResponse.watsonInsights.values[i].percentile
+      const theirPercentile = value.percentile
+      if (myPercentile > theirPercentile) {
+        currentRank += myPercentile - theirPercentile
+      } else {
+        currentRank += theirPercentile - myPercentile
+      }
+    })
+    console.log(currentRank)
+    if (index === 0) {
+      rank = currentRank
+    } else {
+      if (currentRank < rank) {
+        rank = currentRank
+        bestMatch = index
+      }
+    }
+  })
+  return bestMatch
+}
 
-app.get('/person', (req, res) => {
-  db.doc(`/degrees/jeeeezzz@email.com`)
+// get a match
+app.post('/match', FBauth, (req, res) => {
+  const matchByDegree = req.body.matchByDegree
+  const matchBySubject = req.body.matchBySubject
+  const matchByPersonality = req.body.matchByPersonality
+
+  db.doc(`/users/${req.user.email}`)
     .get()
     .then(doc => {
-      if (doc.exists) {
-        return res.json({ personality: doc.data().degreeName })
-      } else {
-        return res.json({ error: 'no degree with that id' })
+      const firstUser = doc.data()
+
+      if (matchByDegree && matchByPersonality) {
+        const degreeMatchRef = db
+          .collection('users')
+          .where('degree.id', '==', firstUser.degree.id)
+
+        let results = []
+        let result
+
+        degreeMatchRef.get().then(snapshot => {
+          if (snapshot.size == 2) {
+            snapshot.forEach(doc => {
+              if (doc.data().email !== req.user.email) result = doc.data()
+            })
+          } else if (snapshot.size > 2) {
+            snapshot.forEach(doc => {
+              if (doc.data().email !== req.user.email) results.push(doc.data())
+            })
+            console.log(results)
+            const matchIndex = findBestMatch(firstUser, results)
+            return res.json({ result: results[matchIndex] })
+          }
+        })
+
+        // degreeMatchRef.get().then(snapshot => {
+        //   if (snapshot.empty) {
+        //     const subjectMatchRef = db
+        //       .collection('users')
+        //       .where('degree.id', '==', firstUser.degree.id)
+        //   } else {
+        //     snapshot.forEach(doc => {
+        //       return res.json({
+        //         subjectId: doc.id,
+        //         subjectCode: doc.data().subjectCode
+        //       })
+        //     })
+        //   }
+        // })
       }
     })
     .catch(err => {
@@ -372,22 +438,59 @@ app.get('/person', (req, res) => {
     })
 })
 
-// const data = {
-//   degreeName: 'Bachelor of Commerce',
-//   uniName: 'University of New South Wales'
-// }
+app.post('/matches', (req, res) => {
+  db.collection('matches')
+    .add({
+      users: [req.body.firstUser, req.body.secondUser],
+      createdAt: new Date().toISOString()
+    })
+    .then(docRef => {
+      res.json({ docId: docRef.id })
+    })
+})
 
-// app.get('/degrees', (req, res) => {
-//   db.collection('degrees')
-//     .add(data)
-//     .then(res => {
-//       console.log(res.id)
-//       return res.json({ id: res.id })
-//     })
-//     .catch(err => {
-//       console.error(err)
-//     })
-// })
+app.get('/matches', FBauth, (req, res) => {
+  //   console.log(req.user.email)
+  db.collection('matches')
+    .where('users', 'array-contains', req.user.email)
+    .get()
+    .then(snapshot => {
+      let results = []
+      if (snapshot.isEmpty) {
+        console.log('the snapshot is empty lol')
+      }
+      let match = {
+        name: null,
+        topType: null,
+        hairColour: null,
+        skinColour: null,
+        clotheType: null
+      }
+      snapshot.forEach(doc => {
+        let userId = doc.data().users.filter(id => id !== req.user.email)
+        db.doc(`/users/${userId[0]}`)
+          .get()
+          .then(matchDoc => {
+            console.log(matchDoc)
+            match.createdAt = matchDoc.data().createdAt
+            match.users = matchDoc.data().users
+            match.name = matchDoc
+              .data()
+              .firstName.concat(matchDoc.data().lastName)
+            match.topType = matchDoc.data().avatar.topType
+            match.hairColour = matchDoc.data().avatar.hairColour
+            match.skinColour = matchDoc.data().avatar.skinColour
+            match.clotheType = matchDoc.data().avatar.clotheType
+          })
+        results.push(match)
+      })
+      return res.json({ results })
+    })
+    .catch(err => {
+      console.error(err)
+      return res.status(500).json({ error: err.code })
+    })
+})
 
 // const createSubjects = () => {
 //   db.collection('subjects').add({
