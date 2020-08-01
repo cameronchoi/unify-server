@@ -57,37 +57,6 @@ const FBauth = (req, res, next) => {
     })
 }
 
-app.get('/test', (req, res) => {
-  db.collection('test')
-    .get()
-    .then(data => {
-      let tests = []
-      data.forEach(doc => {
-        tests.push({
-          testId: doc.id,
-          body: doc.data().body
-        })
-      })
-      return res.json(tests)
-    })
-    .catch(err => console.error(err))
-})
-
-app.post('/test', (req, res) => {
-  const newTest = {
-    body: req.body.body
-  }
-  db.collection('test')
-    .add(newTest)
-    .then(doc => {
-      res.json({ message: `document ${doc.id} created successfully` })
-    })
-    .catch(err => {
-      res.status(500).json({ error: 'something went wrong' })
-      console.error(err)
-    })
-})
-
 const isEmpty = string => {
   if (string.trim() === '') return true
   else return false
@@ -125,10 +94,12 @@ app.post('/signup', (req, res) => {
       }
     })
     .then(data => {
+      console.log('COMING HERE: 1')
       userId = data.user.uid
       return data.user.getIdToken()
     })
     .then(idToken => {
+      console.log('COMING HERE: 2')
       token = idToken
       const userCredentials = {
         userId,
@@ -136,7 +107,7 @@ app.post('/signup', (req, res) => {
         createdAt: new Date().toISOString(),
         firstName: newUser.firstName,
         lastName: newUser.lastName,
-        degree: newUser.degree,
+        degree: null,
         uniName: newUser.uniName,
         uniYear: newUser.uniYear,
         describeSelf: newUser.describeSelf,
@@ -149,9 +120,31 @@ app.post('/signup', (req, res) => {
         },
         subjects: newUser.subjects
       }
-      return db.doc(`/users/${newUser.email}`).set(userCredentials)
+      db.collection('degrees')
+        .where('degreeName', '==', newUser.degree)
+        .where('uniName', '==', newUser.uniName)
+        .get()
+        .then(snapshot => {
+          if (snapshot.empty) {
+            db.collection('degrees')
+              .add({
+                degreeName: newUser.degree,
+                uniName: newUser.uniName
+              })
+              .then(degreeRes => {
+                userCredentials.degree = degreeRes.id
+                return db.doc(`/users/${newUser.email}`).set(userCredentials)
+              })
+          } else {
+            snapshot.forEach(doc => {
+              userCredentials.degree = doc.id
+            })
+            return db.doc(`/users/${newUser.email}`).set(userCredentials)
+          }
+        })
     })
     .then(() => {
+      console.log('COMING HERE: 3')
       return res.status(201).json({ token, email: newUser.email })
     })
     .catch(err => {
@@ -161,7 +154,7 @@ app.post('/signup', (req, res) => {
       } else {
         return res
           .status(500)
-          .json({ error: 'Something went wrong, please try again' })
+          .json({ error: 'Something went wrong, please try again', test: err })
       }
     })
 })
@@ -210,5 +203,122 @@ app.get('/user', FBauth, (req, res) => {
       return res.status(500).json({ error: err.code })
     })
 })
+
+app.post('/user', (req, res) => {
+  db.doc(`/users/${req.body.email}`)
+    .get()
+    .then(doc => {
+      if (doc.exists) {
+        return res.json({ error: 'Email already exists' })
+      }
+      return res.json({ general: 'ok' })
+    })
+    .catch(err => {
+      console.error(err)
+      return res.status(500).json({ error: err.code })
+    })
+})
+
+app.post('/uni', (req, res) => {
+  db.doc(`/universities/${req.body.uniName}`)
+    .get()
+    .then(doc => {
+      if (doc.exists) {
+        return res.json({ uniId: doc.id })
+      } else {
+        return res.json({ error: 'No matching universities' })
+      }
+    })
+    .catch(err => {
+      console.error(err)
+      return res.status(500).json({ error: err.code })
+    })
+})
+
+app.post('/subjects', (req, res) => {
+  const subjectsRef = db.collection('subjects')
+  subjectsRef
+    .where('subjectCode', '==', req.body.subjectCode)
+    .where('uniName', '==', req.body.uniName)
+    .get()
+    .then(snapshot => {
+      if (snapshot.empty) {
+        return res.json({
+          error: 'No matching subject'
+        })
+      } else {
+        snapshot.forEach(doc => {
+          return res.json({
+            subjectId: doc.id,
+            subjectCode: doc.data().subjectCode
+          })
+        })
+      }
+    })
+    .catch(err => {
+      console.error(err)
+      return res.status(500).json({ error: err.code })
+    })
+})
+
+app.post('/degrees', (req, res) => {
+  const degreesRef = db.collection('degrees')
+  degreesRef
+    .where('degreeName', '==', req.body.degreeName)
+    .where('uniName', '==', req.body.uniName)
+    .get()
+    .then(snapshot => {
+      if (snapshot.empty) {
+        return res.json({
+          error: 'No matching degree'
+        })
+      } else {
+        snapshot.forEach(doc => {
+          return res.json({
+            degreeId: doc.id,
+            degreeName: doc.data().degreeName
+          })
+        })
+      }
+    })
+    .catch(err => {
+      console.error(err)
+      return res.status(500).json({ error: err.code })
+    })
+})
+
+// const data = {
+//   degreeName: 'Bachelor of Commerce',
+//   uniName: 'University of New South Wales'
+// }
+
+// app.get('/degrees', (req, res) => {
+//   db.collection('degrees')
+//     .add(data)
+//     .then(res => {
+//       console.log(res.id)
+//       return res.json({ id: res.id })
+//     })
+//     .catch(err => {
+//       console.error(err)
+//     })
+// })
+
+// const createSubjects = () => {
+//   db.collection('subjects').add({
+//     subjectCode: 'INFO3333',
+//     uniName: 'University of Sydney'
+//   })
+//   db.collection('subjects').add({
+//     subjectCode: 'INFO4001',
+//     uniName: 'University of Sydney'
+//   })
+//   db.collection('subjects').add({
+//     subjectCode: 'INFO4444',
+//     uniName: 'University of Sydney'
+//   })
+// }
+
+// createSubjects()
 
 exports.api = functions.region('australia-southeast1').https.onRequest(app)
