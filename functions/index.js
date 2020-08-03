@@ -32,6 +32,7 @@ const firebaseConfig = {
 }
 
 const firebase = require('firebase')
+const { firestore } = require('firebase-admin')
 firebase.initializeApp(firebaseConfig)
 
 const db = admin.firestore()
@@ -335,24 +336,6 @@ app.post('/degree', (req, res) => {
     })
 })
 
-app.post('/ibmtest', (req, res) => {
-  personalityInsights
-    .profile({
-      content: req.body.text,
-      contentType: 'text/plain',
-      consumptionPreferences: false,
-      rawScores: false
-    })
-    .then(response => {
-      res.json({ ok: response.result })
-      //   console.log(JSON.stringify(response.result, null, 2))
-    })
-    .catch(err => {
-      res.json({ error: err })
-      //   console.log('error:', err)
-    })
-})
-
 // utility function for finding the index of the person with the most similar personality, values, and needs
 const findBestMatch = (myResponse, responses) => {
   let rank
@@ -386,9 +369,9 @@ const findBestMatch = (myResponse, responses) => {
         currentRank += theirPercentile - myPercentile
       }
     })
-    console.log(currentRank)
     if (index === 0) {
       rank = currentRank
+      bestMatch = index
     } else {
       if (currentRank < rank) {
         rank = currentRank
@@ -396,42 +379,361 @@ const findBestMatch = (myResponse, responses) => {
       }
     }
   })
+  console.log(bestMatch)
   return bestMatch
+}
+
+const createMatch = (matchOne, matchTwo) => {
+  let userOne = {
+    email: matchOne,
+    avatar: {}
+  }
+  let userTwo = {
+    email: matchTwo,
+    avatar: {}
+  }
+  return new Promise((resolve, reject) => {
+    db.doc(`users/${matchOne}`)
+      .get()
+      .then(doc => {
+        userOne.avatar.topType = doc.data().avatar.topType
+        userOne.avatar.hairColour = doc.data().avatar.hairColour
+        userOne.avatar.skinColour = doc.data().avatar.skinColour
+        userOne.avatar.clotheType = doc.data().avatar.clotheType
+        userOne.firstName = doc.data().firstName
+        userOne.lastName = doc.data().lastName
+
+        db.doc(`users/${matchTwo}`)
+          .get()
+          .then(doc => {
+            userTwo.avatar.topType = doc.data().avatar.topType
+            userTwo.avatar.hairColour = doc.data().avatar.hairColour
+            userTwo.avatar.skinColour = doc.data().avatar.skinColour
+            userTwo.avatar.clotheType = doc.data().avatar.clotheType
+            userTwo.firstName = doc.data().firstName
+            userTwo.lastName = doc.data().lastName
+
+            db.doc(`users/${matchOne}`).update({
+              matches: admin.firestore.FieldValue.arrayUnion(matchTwo)
+            })
+
+            db.doc(`users/${matchTwo}`).update({
+              matches: admin.firestore.FieldValue.arrayUnion(matchOne)
+            })
+            db.collection('matches')
+              .add({
+                createdAt: admin.firestore.Timestamp.now(),
+                users: [matchOne, matchTwo],
+                latestMessageTimestamp: admin.firestore.Timestamp.now(),
+                latestMessage: 'No messages yet...',
+                userInfo: { userOne, userTwo }
+              })
+              .then(docRef => {
+                console.log({ docId: docRef.id })
+                resolve(docRef.id)
+              })
+          })
+          .catch(err => {
+            console.log(err)
+            res.status(400).json({ err })
+          })
+      })
+      .catch(error => {
+        console.log(error)
+        res.json({ error })
+        reject(error)
+      })
+  })
 }
 
 // get a match
 app.post('/match', FBauth, (req, res) => {
-  const matchByDegree = req.body.matchByDegree
-  const matchBySubject = req.body.matchBySubject
-  const matchByPersonality = req.body.matchByPersonality
+  const matchByDegree = req.body.degree
+  const matchBySubject = req.body.subject
+  const matchByPersonality = req.body.personality
 
   db.doc(`/users/${req.user.email}`)
     .get()
     .then(doc => {
       const firstUser = doc.data()
 
-      if (matchByDegree && matchByPersonality) {
-        const degreeMatchRef = db
-          .collection('users')
+      if (matchByDegree && matchByPersonality && matchBySubject) {
+        console.log('degree, pers, and subject')
+        db.collection('users')
           .where('degree.id', '==', firstUser.degree.id)
-
-        let results = []
-        let result
-
-        degreeMatchRef.get().then(snapshot => {
-          if (snapshot.size == 2) {
+          .where('subjects.ids', 'array-contains-any', firstUser.subjects.ids)
+          .get()
+          .then(snapshot => {
+            let results = []
             snapshot.forEach(doc => {
-              if (doc.data().email !== req.user.email) result = doc.data()
+              results.push(doc.data())
             })
-          } else if (snapshot.size > 2) {
+            let filtered = results.filter(item => {
+              if (
+                firstUser.email === item.email ||
+                firstUser.matches.includes(item.email)
+              ) {
+                return false
+              } else {
+                return true
+              }
+            })
+
+            if (filtered.length === 0) {
+              return res.json({
+                error: 'No available matches. Please widen your match options.'
+              })
+            }
+
+            const matchIndex = findBestMatch(firstUser, filtered)
+            createMatch(firstUser.email, filtered[matchIndex].email).then(
+              docId => {
+                return res.json({
+                  result: filtered[matchIndex],
+                  id: docId
+                })
+              }
+            )
+          })
+      } else if (matchByDegree && matchByPersonality) {
+        console.log('degree and pers')
+        db.collection('users')
+          .where('degree.id', '==', firstUser.degree.id)
+          .get()
+          .then(snapshot => {
+            let results = []
             snapshot.forEach(doc => {
-              if (doc.data().email !== req.user.email) results.push(doc.data())
+              results.push(doc.data())
             })
-            console.log(results)
-            const matchIndex = findBestMatch(firstUser, results)
-            return res.json({ result: results[matchIndex] })
-          }
-        })
+            let filtered = results.filter(item => {
+              if (
+                firstUser.email === item.email ||
+                firstUser.matches.includes(item.email)
+              ) {
+                return false
+              } else {
+                return true
+              }
+            })
+
+            if (filtered.length === 0) {
+              return res.json({
+                error: 'No available matches. Please widen your match options.'
+              })
+            }
+
+            const matchIndex = findBestMatch(firstUser, filtered)
+            createMatch(firstUser.email, filtered[matchIndex].email).then(
+              docId => {
+                return res.json({
+                  result: filtered[matchIndex],
+                  id: docId
+                })
+              }
+            )
+          })
+      } else if (matchBySubject && matchByPersonality) {
+        console.log('subject and pers')
+
+        db.collection('users')
+          .where('subjects.ids', 'array-contains-any', firstUser.subjects.ids)
+          .get()
+          .then(snapshot => {
+            let results = []
+            snapshot.forEach(doc => {
+              results.push(doc.data())
+            })
+            let filtered = results.filter(item => {
+              if (
+                firstUser.email === item.email ||
+                firstUser.matches.includes(item.email)
+              ) {
+                return false
+              } else {
+                return true
+              }
+            })
+
+            if (filtered.length === 0) {
+              return res.json({
+                error: 'No available matches. Please widen your match options.'
+              })
+            }
+
+            const matchIndex = findBestMatch(firstUser, filtered)
+            createMatch(firstUser.email, filtered[matchIndex].email).then(
+              docId => {
+                return res.json({
+                  result: filtered[matchIndex],
+                  id: docId
+                })
+              }
+            )
+          })
+      } else if (matchByDegree && matchBySubject) {
+        console.log('degree and subject')
+        db.collection('users')
+          .where('degree.id', '==', firstUser.degree.id)
+          .where('subjects.ids', 'array-contains-any', firstUser.subjects.ids)
+          .get()
+          .then(snapshot => {
+            let results = []
+            snapshot.forEach(doc => {
+              results.push(doc.data())
+            })
+            let filtered = results.filter(item => {
+              if (
+                firstUser.email === item.email ||
+                firstUser.matches.includes(item.email)
+              ) {
+                return false
+              } else {
+                return true
+              }
+            })
+
+            if (filtered.length === 0) {
+              return res.json({
+                error: 'No available matches. Please widen your match options.'
+              })
+            }
+            let result = filtered[Math.floor(Math.random() * filtered.length)]
+            createMatch(firstUser.email, result.email).then(docId => {
+              return res.json({ result: result, id: docId })
+            })
+          })
+      } else if (matchByDegree && !matchBySubject && !matchByPersonality) {
+        console.log('just degree')
+        db.collection('users')
+          .where('degree.id', '==', firstUser.degree.id)
+          .get()
+          .then(snapshot => {
+            let results = []
+            snapshot.forEach(doc => {
+              results.push(doc.data())
+            })
+            let filtered = results.filter(item => {
+              if (
+                firstUser.email === item.email ||
+                firstUser.matches.includes(item.email)
+              ) {
+                return false
+              } else {
+                return true
+              }
+            })
+
+            if (filtered.length === 0) {
+              return res.json({
+                error: 'No available matches. Please widen your match options.'
+              })
+            }
+            let result = filtered[Math.floor(Math.random() * filtered.length)]
+            createMatch(firstUser.email, result.email).then(docId => {
+              return res.json({ result: result, id: docId })
+            })
+          })
+      } else if (!matchByDegree && matchBySubject && !matchByPersonality) {
+        console.log('just subject')
+        db.collection('users')
+          .where('subjects.ids', 'array-contains-any', firstUser.subjects.ids)
+          .get()
+          .then(snapshot => {
+            let results = []
+            snapshot.forEach(doc => {
+              results.push(doc.data())
+            })
+            let filtered = results.filter(item => {
+              if (
+                firstUser.email === item.email ||
+                firstUser.matches.includes(item.email)
+              ) {
+                return false
+              } else {
+                return true
+              }
+            })
+
+            if (filtered.length === 0) {
+              return res.json({
+                error: 'No available matches. Please widen your match options.'
+              })
+            }
+            let result = filtered[Math.floor(Math.random() * filtered.length)]
+            createMatch(firstUser.email, result.email).then(docId => {
+              return res.json({ result: result, id: docId })
+            })
+          })
+      } else if (!matchByDegree && !matchBySubject && matchByPersonality) {
+        console.log('just personality')
+        db.collection('users')
+          .get()
+          .then(snapshot => {
+            let results = []
+            snapshot.forEach(doc => {
+              results.push(doc.data())
+            })
+            let filtered = results.filter(item => {
+              if (
+                firstUser.email === item.email ||
+                firstUser.matches.includes(item.email)
+              ) {
+                return false
+              } else {
+                return true
+              }
+            })
+
+            if (filtered.length === 0) {
+              return res.json({
+                error: 'You have matched with everyone possible!.'
+              })
+            }
+
+            let result = filtered[Math.floor(Math.random() * filtered.length)]
+            createMatch(firstUser.email, result.email).then(docId => {
+              return res.json({ result: result, id: docId })
+            })
+          })
+      } else if (!matchByDegree && !matchBySubject && !matchByPersonality) {
+        console.log('No matching options')
+        db.collection('users')
+          .get()
+          .then(snapshot => {
+            let results = []
+            snapshot.forEach(doc => {
+              results.push(doc.data())
+            })
+            let filtered = results.filter(item => {
+              if (
+                firstUser.email === item.email ||
+                firstUser.matches.includes(item.email)
+              ) {
+                return false
+              } else {
+                return true
+              }
+            })
+
+            // console.log(filtered)
+            if (filtered.length === 0) {
+              return res.json({
+                error: 'You have matched with everyone possible!.'
+              })
+            }
+
+            const matchIndex = findBestMatch(firstUser, filtered)
+            createMatch(firstUser.email, filtered[matchIndex].email).then(
+              docId => {
+                return res.json({
+                  result: filtered[matchIndex],
+                  id: docId
+                })
+              }
+            )
+          })
+      } else {
+        return res.json({ error: 'you are not supposed to do this' })
       }
     })
     .catch(err => {
@@ -440,65 +742,7 @@ app.post('/match', FBauth, (req, res) => {
     })
 })
 
-app.post('/matches', (req, res) => {
-  let userOne = {
-    email: req.body.userOne,
-    avatar: {}
-  }
-  let userTwo = {
-    email: req.body.userTwo,
-    avatar: {}
-  }
-
-  db.doc(`users/${req.body.userOne}`)
-    .get()
-    .then(doc => {
-      userOne.avatar.topType = doc.data().avatar.topType
-      userOne.avatar.hairColour = doc.data().avatar.hairColour
-      userOne.avatar.skinColour = doc.data().avatar.skinColour
-      userOne.avatar.clotheType = doc.data().avatar.clotheType
-      userOne.firstName = doc.data().firstName
-      userOne.lastName = doc.data().lastName
-
-      db.doc(`users/${req.body.userTwo}`)
-        .get()
-        .then(doc => {
-          userTwo.avatar.topType = doc.data().avatar.topType
-          userTwo.avatar.hairColour = doc.data().avatar.hairColour
-          userTwo.avatar.skinColour = doc.data().avatar.skinColour
-          userTwo.avatar.clotheType = doc.data().avatar.clotheType
-          userTwo.firstName = doc.data().firstName
-          userTwo.lastName = doc.data().lastName
-
-          db.collection('matches')
-            .add({
-              createdAt: admin.firestore.Timestamp.now(),
-              users: [req.body.userOne, req.body.userTwo],
-              latestMessageTimestamp: admin.firestore.Timestamp.now(),
-              latestMessage: 'No messages yet...',
-              userInfo: { userOne, userTwo }
-            })
-            .then(docRef => {
-              res.json({ docId: docRef.id })
-            })
-
-          db.doc(`users/${req.body.userOne}`).update({
-            matches: admin.firestore.FieldValue.arrayUnion(req.body.userTwo)
-          })
-
-          db.doc(`users/${req.body.userTwo}`).update({
-            matches: admin.firestore.FieldValue.arrayUnion(req.body.userOne)
-          })
-        })
-    })
-    .catch(error => {
-      console.log(error)
-      res.json({ error })
-    })
-})
-
 app.get('/matches', FBauth, (req, res) => {
-  //   console.log(req.user.email)
   db.collection('matches')
     .where('users', 'array-contains', req.user.email)
     .orderBy('latestMessageTimestamp', 'desc')
@@ -566,6 +810,38 @@ app.patch('/avatar', FBauth, (req, res) => {
       res.json({ error: 'Something went wrong' })
     })
 })
+
+app.patch('/matches', (req, res) => {
+  console.log(req.body.timestamp)
+  db.doc(`matches/${req.body.id}`)
+    .update({
+      latestMessage: req.body.message,
+      latestMessageTimestamp: admin.firestore.Timestamp.now()
+    })
+    .then(res.status(200).json({ ok: 'cool it was created ' }))
+    .catch(err => {
+      res.status(400).json({ err })
+      console.log('uh oh')
+    })
+})
+
+// app.post('/ibmtest', (req, res) => {
+//     personalityInsights
+//       .profile({
+//         content: req.body.text,
+//         contentType: 'text/plain',
+//         consumptionPreferences: false,
+//         rawScores: false
+//       })
+//       .then(response => {
+//         res.json({ ok: response.result })
+//         //   console.log(JSON.stringify(response.result, null, 2))
+//       })
+//       .catch(err => {
+//         res.json({ error: err })
+//         //   console.log('error:', err)
+//       })
+//   })
 
 // const createSubjects = () => {
 //   db.collection('subjects').add({
