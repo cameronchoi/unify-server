@@ -1,0 +1,436 @@
+{
+  "results": [
+    {
+      "latestMessage": "No messages yet...",
+      "userInfo": [
+        {
+          "avatar": {
+            "hairColour": "Platinum",
+            "clotheType": "ShirtCrewNeck",
+            "skinColour": "Yellow",
+            "topType": "LongHairCurly"
+          },
+          "email": "test13@email.com",
+          "firstName": "Test",
+          "lastName": "Thirteen"
+        },
+        {
+          "firstName": "Test",
+          "avatar": {
+            "hairColour": "BrownDark",
+            "clotheType": "ShirtVNeck",
+            "skinColour": "Tanned",
+            "topType": "LongHairFro"
+          },
+          "email": "test1@email.com",
+          "lastName": "One"
+        }
+      ],
+      "users": ["test13@email.com", "test1@email.com"],
+      "latestMessageTimestamp": {
+        "_seconds": 1596398775,
+        "_nanoseconds": 350000000
+      },
+      "createdAt": {
+        "_seconds": 1596398775,
+        "_nanoseconds": 350000000
+      }
+    },
+    {
+      "userInfo": [
+        {
+          "firstName": "Test",
+          "avatar": {
+            "hairColour": "BrownDark",
+            "clotheType": "ShirtVNeck",
+            "topType": "LongHairFro",
+            "skinColour": "Tanned"
+          },
+          "email": "test1@email.com",
+          "lastName": "One"
+        },
+        {
+          "firstName": "Test",
+          "avatar": {
+            "hairColour": "Platinum",
+            "clotheType": "ShirtCrewNeck",
+            "skinColour": "Yellow",
+            "topType": "LongHairCurly"
+          },
+          "lastName": "Twelve",
+          "email": "test12@email.com"
+        }
+      ],
+      "latestMessageTimestamp": {
+        "_seconds": 1596398770,
+        "_nanoseconds": 51000000
+      },
+      "createdAt": {
+        "_seconds": 1596398770,
+        "_nanoseconds": 51000000
+      },
+      "users": ["test1@email.com", "test12@email.com"],
+      "latestMessage": "No messages yet..."
+    },
+    {
+      "createdAt": {
+        "_seconds": 1596398767,
+        "_nanoseconds": 52000000
+      },
+      "users": ["test1@email.com", "test11@email.com"],
+      "latestMessageTimestamp": {
+        "_seconds": 1596398767,
+        "_nanoseconds": 52000000
+      },
+      "userInfo": [
+        {
+          "email": "test1@email.com",
+          "avatar": {
+            "skinColour": "Tanned",
+            "clotheType": "ShirtVNeck",
+            "topType": "LongHairFro",
+            "hairColour": "BrownDark"
+          },
+          "lastName": "One",
+          "firstName": "Test"
+        },
+        {
+          "email": "test11@email.com",
+          "lastName": "Eleven",
+          "firstName": "Test",
+          "avatar": {
+            "skinColour": "Yellow",
+            "clotheType": "ShirtCrewNeck",
+            "topType": "LongHairCurly",
+            "hairColour": "Platinum"
+          }
+        }
+      ],
+      "latestMessage": "No messages yet..."
+    },
+    {
+      "userInfo": [
+        {
+          "avatar": {
+            "clotheType": "ShirtVNeck",
+            "hairColour": "BrownDark",
+            "topType": "LongHairFro",
+            "skinColour": "Tanned"
+          },
+          "email": "test1@email.com",
+          "firstName": "Test",
+          "lastName": "One"
+        },
+        {
+          "firstName": "Test",
+          "lastName": "Ten",
+          "email": "test10@email.com",
+          "avatar": {
+            "skinColour": "Yellow",
+            "topType": "LongHairCurly",
+            "clotheType": "ShirtCrewNeck",
+            "hairColour": "Platinum"
+          }
+        }
+      ],
+      "users": ["test1@email.com", "test10@email.com"],
+      "latestMessageTimestamp": {
+        "_seconds": 1596398763,
+        "_nanoseconds": 340000000
+      },
+      "createdAt": {
+        "_seconds": 1596398763,
+        "_nanoseconds": 340000000
+      },
+      "latestMessage": "No messages yet..."
+    },
+    {
+      "userInfo": [
+        {
+          "email": "test9@email.com",
+          "lastName": "Nine",
+          "firstName": "Test",
+          "avatar": {
+            "hairColour": "Platinum",
+            "skinColour": "Yellow",
+            "clotheType": "ShirtCrewNeck",
+            "topType": "LongHairCurly"
+          }
+        },
+        {
+          "firstName": "Test",
+          "lastName": "One",
+          "email": "test1@email.com",
+          "avatar": {
+            "topType": "LongHairFro",
+            "hairColour": "BrownDark",
+            "clotheType": "ShirtVNeck",
+            "skinColour": "Tanned"
+          }
+        }
+      ],
+      "createdAt": {
+        "_seconds": 1596398758,
+        "_nanoseconds": 339000000
+      },
+      "latestMessage": "No messages yet...",
+      "latestMessageTimestamp": {
+        "_seconds": 1596398758,
+        "_nanoseconds": 339000000
+      },
+      "users": ["test9@email.com", "test1@email.com"]
+    },
+    {
+      "latestMessageTimestamp": {
+        "_seconds": 1596398755,
+        "_nanoseconds": 121000000
+      },
+      "latestMessage": "No messages yet...",
+      "userInfo": [
+        {
+          "lastName": "Eight",
+          "email": "test8@email.com",
+          "firstName": "Test",
+          "avatar": {
+            "clotheType": "ShirtCrewNeck",
+            "hairColour": "Platinum",
+            "topType": "LongHairCurly",
+            "skinColour": "Yellow"
+          }
+        },
+        {
+          "avatar": {
+            "topType": "LongHairFro",
+            "skinColour": "Tanned",
+            "clotheType": "ShirtVNeck",
+            "hairColour": "BrownDark"
+          },
+          "lastName": "One",
+          "email": "test1@email.com",
+          "firstName": "Test"
+        }
+      ],
+      "createdAt": {
+        "_seconds": 1596398755,
+        "_nanoseconds": 121000000
+      },
+      "users": ["test8@email.com", "test1@email.com"]
+    },
+    {
+      "users": ["test7@email.com", "test1@email.com"],
+      "latestMessage": "No messages yet...",
+      "createdAt": {
+        "_seconds": 1596398751,
+        "_nanoseconds": 523000000
+      },
+      "userInfo": [
+        {
+          "firstName": "Test",
+          "lastName": "Seven",
+          "email": "test7@email.com",
+          "avatar": {
+            "clotheType": "ShirtCrewNeck",
+            "skinColour": "Yellow",
+            "topType": "LongHairCurly",
+            "hairColour": "Platinum"
+          }
+        },
+        {
+          "firstName": "Test",
+          "avatar": {
+            "clotheType": "ShirtVNeck",
+            "skinColour": "Tanned",
+            "hairColour": "BrownDark",
+            "topType": "LongHairFro"
+          },
+          "email": "test1@email.com",
+          "lastName": "One"
+        }
+      ],
+      "latestMessageTimestamp": {
+        "_seconds": 1596398751,
+        "_nanoseconds": 523000000
+      }
+    },
+    {
+      "latestMessageTimestamp": {
+        "_seconds": 1596398746,
+        "_nanoseconds": 781000000
+      },
+      "createdAt": {
+        "_seconds": 1596398746,
+        "_nanoseconds": 781000000
+      },
+      "latestMessage": "No messages yet...",
+      "users": ["test1@email.com", "test6@email.com"],
+      "userInfo": [
+        {
+          "firstName": "Test",
+          "avatar": {
+            "topType": "LongHairFro",
+            "skinColour": "Tanned",
+            "clotheType": "ShirtVNeck",
+            "hairColour": "BrownDark"
+          },
+          "lastName": "One",
+          "email": "test1@email.com"
+        },
+        {
+          "email": "test6@email.com",
+          "lastName": "Six",
+          "firstName": "Test",
+          "avatar": {
+            "skinColour": "Yellow",
+            "clotheType": "ShirtCrewNeck",
+            "hairColour": "Platinum",
+            "topType": "LongHairCurly"
+          }
+        }
+      ]
+    },
+    {
+      "createdAt": {
+        "_seconds": 1596398743,
+        "_nanoseconds": 503000000
+      },
+      "latestMessage": "No messages yet...",
+      "users": ["test1@email.com", "test5@email.com"],
+      "userInfo": [
+        {
+          "lastName": "One",
+          "firstName": "Test",
+          "avatar": {
+            "clotheType": "ShirtVNeck",
+            "hairColour": "BrownDark",
+            "topType": "LongHairFro",
+            "skinColour": "Tanned"
+          },
+          "email": "test1@email.com"
+        },
+        {
+          "email": "test5@email.com",
+          "avatar": {
+            "hairColour": "Platinum",
+            "skinColour": "Yellow",
+            "clotheType": "ShirtCrewNeck",
+            "topType": "LongHairCurly"
+          },
+          "lastName": "Five",
+          "firstName": "Test"
+        }
+      ],
+      "latestMessageTimestamp": {
+        "_seconds": 1596398743,
+        "_nanoseconds": 503000000
+      }
+    },
+    {
+      "latestMessage": "No messages yet...",
+      "userInfo": [
+        {
+          "email": "test1@email.com",
+          "firstName": "Test",
+          "avatar": {
+            "clotheType": "ShirtVNeck",
+            "skinColour": "Tanned",
+            "topType": "LongHairFro",
+            "hairColour": "BrownDark"
+          },
+          "lastName": "One"
+        },
+        {
+          "email": "test4@email.com",
+          "lastName": "Four",
+          "avatar": {
+            "clotheType": "ShirtCrewNeck",
+            "hairColour": "Platinum",
+            "topType": "LongHairCurly",
+            "skinColour": "Yellow"
+          },
+          "firstName": "Test"
+        }
+      ],
+      "createdAt": {
+        "_seconds": 1596398736,
+        "_nanoseconds": 594000000
+      },
+      "latestMessageTimestamp": {
+        "_seconds": 1596398736,
+        "_nanoseconds": 594000000
+      },
+      "users": ["test1@email.com", "test4@email.com"]
+    },
+    {
+      "createdAt": {
+        "_seconds": 1596398721,
+        "_nanoseconds": 372000000
+      },
+      "userInfo": [
+        {
+          "firstName": "Test",
+          "email": "test1@email.com",
+          "avatar": {
+            "hairColour": "BrownDark",
+            "topType": "LongHairFro",
+            "skinColour": "Tanned",
+            "clotheType": "ShirtVNeck"
+          },
+          "lastName": "One"
+        },
+        {
+          "firstName": "Test",
+          "lastName": "Three",
+          "avatar": {
+            "clotheType": "ShirtCrewNeck",
+            "hairColour": "Platinum",
+            "skinColour": "Yellow",
+            "topType": "LongHairCurly"
+          },
+          "email": "test3@email.com"
+        }
+      ],
+      "users": ["test1@email.com", "test3@email.com"],
+      "latestMessage": "No messages yet...",
+      "latestMessageTimestamp": {
+        "_seconds": 1596398721,
+        "_nanoseconds": 372000000
+      }
+    },
+    {
+      "latestMessageTimestamp": {
+        "_seconds": 1596398716,
+        "_nanoseconds": 994000000
+      },
+      "createdAt": {
+        "_seconds": 1596398716,
+        "_nanoseconds": 994000000
+      },
+      "userInfo": [
+        {
+          "firstName": "Test",
+          "avatar": {
+            "hairColour": "BrownDark",
+            "topType": "LongHairFro",
+            "clotheType": "ShirtVNeck",
+            "skinColour": "Tanned"
+          },
+          "email": "test1@email.com",
+          "lastName": "One"
+        },
+        {
+          "email": "test2@email.com",
+          "avatar": {
+            "clotheType": "Overall",
+            "skinColour": "Tanned",
+            "hairColour": "Brown",
+            "topType": "LongHairBigHair"
+          },
+          "lastName": "Two",
+          "firstName": "Test"
+        }
+      ],
+      "latestMessage": "No messages yet...",
+      "users": ["test1@email.com", "test2@email.com"]
+    }
+  ]
+}
