@@ -197,6 +197,23 @@ app.post('/login', (req, res) => {
     })
 })
 
+// get a user without authorisation
+app.get('/user/:email', (req, res) => {
+  let userData = {}
+  db.doc(`/users/${req.params.email}`)
+    .get()
+    .then(doc => {
+      if (doc.exists) {
+        userData = doc.data()
+      }
+      return res.json(userData)
+    })
+    .catch(err => {
+      console.error(err)
+      return res.status(500).json({ error: err.code })
+    })
+})
+
 // get users route
 app.get('/user', FBauth, (req, res) => {
   let userData = {}
@@ -415,21 +432,6 @@ app.post('/match', FBauth, (req, res) => {
             return res.json({ result: results[matchIndex] })
           }
         })
-
-        // degreeMatchRef.get().then(snapshot => {
-        //   if (snapshot.empty) {
-        //     const subjectMatchRef = db
-        //       .collection('users')
-        //       .where('degree.id', '==', firstUser.degree.id)
-        //   } else {
-        //     snapshot.forEach(doc => {
-        //       return res.json({
-        //         subjectId: doc.id,
-        //         subjectCode: doc.data().subjectCode
-        //       })
-        //     })
-        //   }
-        // })
       }
     })
     .catch(err => {
@@ -439,13 +441,59 @@ app.post('/match', FBauth, (req, res) => {
 })
 
 app.post('/matches', (req, res) => {
-  db.collection('matches')
-    .add({
-      users: [req.body.firstUser, req.body.secondUser],
-      createdAt: new Date().toISOString()
+  let userOne = {
+    email: req.body.userOne,
+    avatar: {}
+  }
+  let userTwo = {
+    email: req.body.userTwo,
+    avatar: {}
+  }
+
+  db.doc(`users/${req.body.userOne}`)
+    .get()
+    .then(doc => {
+      userOne.avatar.topType = doc.data().avatar.topType
+      userOne.avatar.hairColour = doc.data().avatar.hairColour
+      userOne.avatar.skinColour = doc.data().avatar.skinColour
+      userOne.avatar.clotheType = doc.data().avatar.clotheType
+      userOne.firstName = doc.data().firstName
+      userOne.lastName = doc.data().lastName
+
+      db.doc(`users/${req.body.userTwo}`)
+        .get()
+        .then(doc => {
+          userTwo.avatar.topType = doc.data().avatar.topType
+          userTwo.avatar.hairColour = doc.data().avatar.hairColour
+          userTwo.avatar.skinColour = doc.data().avatar.skinColour
+          userTwo.avatar.clotheType = doc.data().avatar.clotheType
+          userTwo.firstName = doc.data().firstName
+          userTwo.lastName = doc.data().lastName
+
+          db.collection('matches')
+            .add({
+              createdAt: admin.firestore.Timestamp.now(),
+              users: [req.body.userOne, req.body.userTwo],
+              latestMessageTimestamp: admin.firestore.Timestamp.now(),
+              latestMessage: 'No messages yet...',
+              userInfo: { userOne, userTwo }
+            })
+            .then(docRef => {
+              res.json({ docId: docRef.id })
+            })
+
+          db.doc(`users/${req.body.userOne}`).update({
+            matches: admin.firestore.FieldValue.arrayUnion(req.body.userTwo)
+          })
+
+          db.doc(`users/${req.body.userTwo}`).update({
+            matches: admin.firestore.FieldValue.arrayUnion(req.body.userOne)
+          })
+        })
     })
-    .then(docRef => {
-      res.json({ docId: docRef.id })
+    .catch(error => {
+      console.log(error)
+      res.json({ error })
     })
 })
 
@@ -453,42 +501,69 @@ app.get('/matches', FBauth, (req, res) => {
   //   console.log(req.user.email)
   db.collection('matches')
     .where('users', 'array-contains', req.user.email)
+    .orderBy('latestMessageTimestamp', 'desc')
     .get()
     .then(snapshot => {
       let results = []
       if (snapshot.isEmpty) {
         console.log('the snapshot is empty lol')
       }
-      let match = {
-        name: null,
-        topType: null,
-        hairColour: null,
-        skinColour: null,
-        clotheType: null
-      }
       snapshot.forEach(doc => {
-        let userId = doc.data().users.filter(id => id !== req.user.email)
-        db.doc(`/users/${userId[0]}`)
-          .get()
-          .then(matchDoc => {
-            console.log(matchDoc)
-            match.createdAt = matchDoc.data().createdAt
-            match.users = matchDoc.data().users
-            match.name = matchDoc
-              .data()
-              .firstName.concat(matchDoc.data().lastName)
-            match.topType = matchDoc.data().avatar.topType
-            match.hairColour = matchDoc.data().avatar.hairColour
-            match.skinColour = matchDoc.data().avatar.skinColour
-            match.clotheType = matchDoc.data().avatar.clotheType
-          })
-        results.push(match)
+        let info = {
+          key: doc.id,
+          match: doc.data()
+        }
+        results.push(info)
       })
       return res.json({ results })
     })
     .catch(err => {
       console.error(err)
       return res.status(500).json({ error: err.code })
+    })
+})
+
+app.patch('/avatar', FBauth, (req, res) => {
+  db.doc(`users/${req.user.email}`)
+    .update({
+      'avatar.topType': req.body.topType,
+      'avatar.hairColour': req.body.hairColour,
+      'avatar.skinColour': req.body.skinColour,
+      'avatar.clotheType': req.body.clotheType
+    })
+    .then(data => {
+      res.json({ data })
+      db.collection('matches')
+        .where('users', 'array-contains', req.user.email)
+        .get()
+        .then(snapshot => {
+          if (!snapshot.empty) {
+            snapshot.forEach(doc => {
+              if (doc.data().userInfo.userOne.email === req.user.email) {
+                doc.ref.update({
+                  'userInfo.userOne.avatar': {
+                    topType: req.body.topType,
+                    hairColour: req.body.hairColour,
+                    skinColour: req.body.skinColour,
+                    clotheType: req.body.clotheType
+                  }
+                })
+              } else if (doc.data().userInfo.userTwo.email === req.user.email) {
+                doc.ref.update({
+                  'userInfo.userTwo.avatar': {
+                    topType: req.body.topType,
+                    hairColour: req.body.hairColour,
+                    skinColour: req.body.skinColour,
+                    clotheType: req.body.clotheType
+                  }
+                })
+              }
+            })
+          }
+        })
+    })
+    .catch(err => {
+      res.json({ error: 'Something went wrong' })
     })
 })
 
