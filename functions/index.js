@@ -198,12 +198,16 @@ app.post('/login', (req, res) => {
     });
 });
 
+// get all degrees
 app.get('/degrees', (req, res) => {
   const degrees = [];
   db.collection('/degrees')
     .where('uniName', '==', req.query.uniName)
     .get()
     .then((snapshot) => {
+      if (snapshot.empty) {
+        return res.status(404).json({ error: 'No matching degrees' });
+      }
       snapshot.forEach((doc) => {
         degrees.push({ id: doc.id, ...doc.data() });
       });
@@ -225,6 +229,29 @@ app.get('/uni', (req, res) => {
         universities.push({ id: doc.id, ...doc.data() });
       });
       return res.json(universities);
+    })
+    .catch((err) => {
+      console.error(err);
+      return res.status(500).json({ error: err.code });
+    });
+});
+
+// get a list of available subjects
+app.get('/subjects', (req, res) => {
+  const subjects = [];
+  db.collection('subjects')
+    .where('uniName', '==', req.query.uniName)
+    .get()
+    .then((snapshot) => {
+      if (snapshot.empty) {
+        return res.status(404).json({
+          error: 'No matching subjects',
+        });
+      }
+      snapshot.forEach((doc) => {
+        subjects.push({ id: doc.id, ...doc.data() });
+      });
+      return res.json(subjects);
     })
     .catch((err) => {
       console.error(err);
