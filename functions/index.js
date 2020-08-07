@@ -201,6 +201,7 @@ app.post('/login', (req, res) => {
 app.get('/degrees', (req, res) => {
   const degrees = [];
   db.collection('/degrees')
+    .where('uniName', '==', req.query.uniName)
     .get()
     .then((snapshot) => {
       snapshot.forEach((doc) => {
