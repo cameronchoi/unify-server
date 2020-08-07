@@ -198,6 +198,22 @@ app.post('/login', (req, res) => {
     });
 });
 
+app.get('/degrees', (req, res) => {
+  const degrees = [];
+  db.collection('/degrees')
+    .get()
+    .then((snapshot) => {
+      snapshot.forEach((doc) => {
+        degrees.push({ id: doc.id, ...doc.data() });
+      });
+      return res.json(degrees);
+    })
+    .catch((err) => {
+      console.error(err);
+      return res.status(500).json({ error: err.code });
+    });
+});
+
 // get a list of available universities
 app.get('/uni', (req, res) => {
   const universities = [];
@@ -282,33 +298,6 @@ app.post('/subjects', (req, res) => {
           return res.json({
             subjectId: doc.id,
             subjectCode: doc.data().subjectCode,
-          });
-        });
-      }
-    })
-    .catch((err) => {
-      console.error(err);
-      return res.status(500).json({ error: err.code });
-    });
-});
-
-// find if degree exists
-app.post('/degrees', (req, res) => {
-  const degreesRef = db.collection('degrees');
-  degreesRef
-    .where('degreeName', '==', req.body.degreeName)
-    .where('uniName', '==', req.body.uniName)
-    .get()
-    .then((snapshot) => {
-      if (snapshot.empty) {
-        return res.json({
-          error: 'No matching degree',
-        });
-      } else {
-        snapshot.forEach((doc) => {
-          return res.json({
-            degreeId: doc.id,
-            degreeName: doc.data().degreeName,
           });
         });
       }
