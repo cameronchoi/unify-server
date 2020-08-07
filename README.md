@@ -5,6 +5,7 @@ Creating a high degree of connection for students, by students
 ## Author
 
 Cameron Choi - University of Sydney
+
 Andrew Chung - Northwestern University
 
 ## Important Links
