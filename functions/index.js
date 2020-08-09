@@ -1,38 +1,38 @@
-const functions = require('firebase-functions');
-require('dotenv').config();
-const admin = require('firebase-admin');
-const express = require('express');
+const functions = require("firebase-functions");
+require("dotenv").config();
+const admin = require("firebase-admin");
+const express = require("express");
 const app = express();
 
-const PersonalityInsightsV3 = require('ibm-watson/personality-insights/v3');
-const { IamAuthenticator } = require('ibm-watson/auth');
+const PersonalityInsightsV3 = require("ibm-watson/personality-insights/v3");
+const { IamAuthenticator } = require("ibm-watson/auth");
 
 const personalityInsights = new PersonalityInsightsV3({
-  version: '2017-10-13',
+  version: "2017-10-13",
   authenticator: new IamAuthenticator({
     apikey: process.env.IBM_API_KEY,
   }),
   url:
-    'https://api.au-syd.personality-insights.watson.cloud.ibm.com/instances/89379318-f4e6-4e38-8286-1c4e308351ee',
+    "https://api.au-syd.personality-insights.watson.cloud.ibm.com/instances/89379318-f4e6-4e38-8286-1c4e308351ee",
 });
 
 admin.initializeApp({
-  credential: admin.credential.cert(require('./admin.json')),
+  credential: admin.credential.cert(require("./admin.json")),
 });
 
 const firebaseConfig = {
   apiKey: process.env.API_KEY,
-  authDomain: 'unify-40e9b.firebaseapp.com',
-  databaseURL: 'https://unify-40e9b.firebaseio.com',
-  projectId: 'unify-40e9b',
-  storageBucket: 'unify-40e9b.appspot.com',
-  messagingSenderId: '721861398339',
-  appId: '1:721861398339:web:3ee2cdb990e674a7cfe9f6',
-  measurementId: 'G-RLMF7QHTJR',
+  authDomain: "unify-40e9b.firebaseapp.com",
+  databaseURL: "https://unify-40e9b.firebaseio.com",
+  projectId: "unify-40e9b",
+  storageBucket: "unify-40e9b.appspot.com",
+  messagingSenderId: "721861398339",
+  appId: "1:721861398339:web:3ee2cdb990e674a7cfe9f6",
+  measurementId: "G-RLMF7QHTJR",
 };
 
-const firebase = require('firebase');
-const { firestore } = require('firebase-admin');
+const firebase = require("firebase");
+const { firestore } = require("firebase-admin");
 firebase.initializeApp(firebaseConfig);
 
 const db = admin.firestore();
@@ -41,12 +41,12 @@ const FBauth = (req, res, next) => {
   let idToken;
   if (
     req.headers.authorization &&
-    req.headers.authorization.startsWith('Bearer ')
+    req.headers.authorization.startsWith("Bearer ")
   ) {
-    idToken = req.headers.authorization.split('Bearer ')[1];
+    idToken = req.headers.authorization.split("Bearer ")[1];
   } else {
-    console.error('No token found');
-    return res.status(403).json({ error: 'Unauthorized' });
+    console.error("No token found");
+    return res.status(403).json({ error: "Unauthorized" });
   }
 
   admin
@@ -55,8 +55,8 @@ const FBauth = (req, res, next) => {
     .then((decodedToken) => {
       req.user = decodedToken;
       return db
-        .collection('users')
-        .where('userId', '==', req.user.uid)
+        .collection("users")
+        .where("userId", "==", req.user.uid)
         .limit(1)
         .get();
     })
@@ -65,18 +65,18 @@ const FBauth = (req, res, next) => {
       return next();
     })
     .catch((err) => {
-      console.error('Error while verifying token ', err);
+      console.error("Error while verifying token ", err);
       return res.status(403).json(err);
     });
 };
 
 const isEmpty = (string) => {
-  if (string.trim() === '') return true;
+  if (string.trim() === "") return true;
   else return false;
 };
 
 //signup route
-app.post('/signup', (req, res) => {
+app.post("/signup", (req, res) => {
   const newUser = {
     email: req.body.email,
     password: req.body.password,
@@ -101,7 +101,7 @@ app.post('/signup', (req, res) => {
     .get()
     .then((doc) => {
       if (doc.exists) {
-        return res.status(400).json({ email: 'this email is already taken' });
+        return res.status(400).json({ email: "this email is already taken" });
       } else {
         return firebase
           .auth()
@@ -139,14 +139,15 @@ app.post('/signup', (req, res) => {
           codes: newUser.subjectCodes,
         },
         watsonInsights: {},
+        matches: [],
       };
-      // use ibm watson to guage personality, values and needs
+      // use ibm watson to gauge personality, values and needs
       let text = newUser.describeSelf.concat(newUser.describeFriend);
 
       personalityInsights
         .profile({
           content: text,
-          contentType: 'text/plain',
+          contentType: "text/plain",
           consumptionPreferences: false,
           rawScores: false,
         })
@@ -160,18 +161,18 @@ app.post('/signup', (req, res) => {
     })
     .catch((err) => {
       console.error(err);
-      if (err.code === 'auth/email-already-in-use') {
-        return res.status(400).json({ error: 'Email is already is use' });
+      if (err.code === "auth/email-already-in-use") {
+        return res.status(400).json({ error: "Email is already is use" });
       } else {
         return res
           .status(500)
-          .json({ error: 'Something went wrong, please try again', test: err });
+          .json({ error: "Something went wrong, please try again", test: err });
       }
     });
 });
 
 // login route
-app.post('/login', (req, res) => {
+app.post("/login", (req, res) => {
   const user = {
     email: req.body.email,
     password: req.body.password,
@@ -188,10 +189,10 @@ app.post('/login', (req, res) => {
     })
     .catch((err) => {
       console.error(err);
-      if (err.code === 'auth/wrong-password') {
+      if (err.code === "auth/wrong-password") {
         return res
           .status(403)
-          .json({ error: 'Wrong credentials, please try again' });
+          .json({ error: "Wrong credentials, please try again" });
       } else {
         return res.status(500).json({ error: err.code });
       }
@@ -199,14 +200,14 @@ app.post('/login', (req, res) => {
 });
 
 // get all degrees
-app.get('/degrees', (req, res) => {
+app.get("/degrees", (req, res) => {
   const degrees = [];
-  db.collection('/degrees')
-    .where('uniName', '==', req.query.uniName)
+  db.collection("/degrees")
+    .where("uniName", "==", req.query.uniName)
     .get()
     .then((snapshot) => {
       if (snapshot.empty) {
-        return res.status(404).json({ error: 'No matching degrees' });
+        return res.status(404).json({ error: "No matching degrees" });
       }
       snapshot.forEach((doc) => {
         degrees.push({ id: doc.id, ...doc.data() });
@@ -220,9 +221,9 @@ app.get('/degrees', (req, res) => {
 });
 
 // get a list of available universities
-app.get('/uni', (req, res) => {
+app.get("/uni", (req, res) => {
   const universities = [];
-  db.collection('/universities')
+  db.collection("/universities")
     .get()
     .then((snapshot) => {
       snapshot.forEach((doc) => {
@@ -237,15 +238,15 @@ app.get('/uni', (req, res) => {
 });
 
 // get a list of available subjects
-app.get('/subjects', (req, res) => {
+app.get("/subjects", (req, res) => {
   const subjects = [];
-  db.collection('subjects')
-    .where('uniName', '==', req.query.uniName)
+  db.collection("subjects")
+    .where("uniName", "==", req.query.uniName)
     .get()
     .then((snapshot) => {
       if (snapshot.empty) {
         return res.status(404).json({
-          error: 'No matching subjects',
+          error: "No matching subjects",
         });
       }
       snapshot.forEach((doc) => {
@@ -260,7 +261,7 @@ app.get('/subjects', (req, res) => {
 });
 
 // get a user without authorisation
-app.get('/user/:email', (req, res) => {
+app.get("/user/:email", (req, res) => {
   let userData = {};
   db.doc(`/users/${req.params.email}`)
     .get()
@@ -277,7 +278,7 @@ app.get('/user/:email', (req, res) => {
 });
 
 // get users route
-app.get('/user', FBauth, (req, res) => {
+app.get("/user", FBauth, (req, res) => {
   let userData = {};
   db.doc(`/users/${req.user.email}`)
     .get()
@@ -294,14 +295,14 @@ app.get('/user', FBauth, (req, res) => {
 });
 
 // find if email exists
-app.post('/email', (req, res) => {
+app.post("/email", (req, res) => {
   db.doc(`/users/${req.body.email}`)
     .get()
     .then((doc) => {
       if (doc.exists) {
-        return res.json({ error: 'Email already exists' });
+        return res.json({ error: "Email already exists" });
       }
-      return res.json({ general: 'ok' });
+      return res.json({ general: "ok" });
     })
     .catch((err) => {
       console.error(err);
@@ -310,16 +311,16 @@ app.post('/email', (req, res) => {
 });
 
 // find if subject exists
-app.post('/subjects', (req, res) => {
-  const subjectsRef = db.collection('subjects');
+app.post("/subjects", (req, res) => {
+  const subjectsRef = db.collection("subjects");
   subjectsRef
-    .where('subjectCode', '==', req.body.subjectCode)
-    .where('uniName', '==', req.body.uniName)
+    .where("subjectCode", "==", req.body.subjectCode)
+    .where("uniName", "==", req.body.uniName)
     .get()
     .then((snapshot) => {
       if (snapshot.empty) {
         return res.json({
-          error: 'No matching subject',
+          error: "No matching subject",
         });
       } else {
         snapshot.forEach((doc) => {
@@ -337,14 +338,14 @@ app.post('/subjects', (req, res) => {
 });
 
 // get degree name singular
-app.post('/degree', (req, res) => {
+app.post("/degree", (req, res) => {
   db.doc(`/degrees/${req.body.degreeId}`)
     .get()
     .then((doc) => {
       if (doc.exists) {
         return res.json({ degreeName: doc.data().degreeName });
       } else {
-        return res.json({ error: 'no degree with that id' });
+        return res.json({ error: "no degree with that id" });
       }
     })
     .catch((err) => {
@@ -437,12 +438,12 @@ const createMatch = (matchOne, matchTwo) => {
             db.doc(`users/${matchTwo}`).update({
               matches: admin.firestore.FieldValue.arrayUnion(matchOne),
             });
-            db.collection('matches')
+            db.collection("matches")
               .add({
                 createdAt: admin.firestore.Timestamp.now(),
                 users: [matchOne, matchTwo],
                 latestMessageTimestamp: admin.firestore.Timestamp.now(),
-                latestMessage: 'No messages yet...',
+                latestMessage: "No messages yet...",
                 userInfo: { userOne, userTwo },
               })
               .then((docRef) => {
@@ -464,7 +465,7 @@ const createMatch = (matchOne, matchTwo) => {
 };
 
 // get a match
-app.post('/match', FBauth, (req, res) => {
+app.post("/match", FBauth, (req, res) => {
   const matchByDegree = req.body.degree;
   const matchBySubject = req.body.subject;
   const matchByPersonality = req.body.personality;
@@ -475,10 +476,10 @@ app.post('/match', FBauth, (req, res) => {
       const firstUser = doc.data();
 
       if (matchByDegree && matchByPersonality && matchBySubject) {
-        console.log('degree, pers, and subject');
-        db.collection('users')
-          .where('degree.id', '==', firstUser.degree.id)
-          .where('subjects.ids', 'array-contains-any', firstUser.subjects.ids)
+        console.log("degree, pers, and subject");
+        db.collection("users")
+          .where("degree.id", "==", firstUser.degree.id)
+          .where("subjects.ids", "array-contains-any", firstUser.subjects.ids)
           .get()
           .then((snapshot) => {
             let results = [];
@@ -498,7 +499,7 @@ app.post('/match', FBauth, (req, res) => {
 
             if (filtered.length === 0) {
               return res.json({
-                error: 'No available matches. Please widen your match options.',
+                error: "No available matches. Please widen your match options.",
               });
             }
 
@@ -513,9 +514,9 @@ app.post('/match', FBauth, (req, res) => {
             );
           });
       } else if (matchByDegree && matchByPersonality) {
-        console.log('degree and pers');
-        db.collection('users')
-          .where('degree.id', '==', firstUser.degree.id)
+        console.log("degree and pers");
+        db.collection("users")
+          .where("degree.id", "==", firstUser.degree.id)
           .get()
           .then((snapshot) => {
             let results = [];
@@ -535,7 +536,7 @@ app.post('/match', FBauth, (req, res) => {
 
             if (filtered.length === 0) {
               return res.json({
-                error: 'No available matches. Please widen your match options.',
+                error: "No available matches. Please widen your match options.",
               });
             }
 
@@ -550,10 +551,10 @@ app.post('/match', FBauth, (req, res) => {
             );
           });
       } else if (matchBySubject && matchByPersonality) {
-        console.log('subject and pers');
+        console.log("subject and pers");
 
-        db.collection('users')
-          .where('subjects.ids', 'array-contains-any', firstUser.subjects.ids)
+        db.collection("users")
+          .where("subjects.ids", "array-contains-any", firstUser.subjects.ids)
           .get()
           .then((snapshot) => {
             let results = [];
@@ -573,7 +574,7 @@ app.post('/match', FBauth, (req, res) => {
 
             if (filtered.length === 0) {
               return res.json({
-                error: 'No available matches. Please widen your match options.',
+                error: "No available matches. Please widen your match options.",
               });
             }
 
@@ -588,10 +589,10 @@ app.post('/match', FBauth, (req, res) => {
             );
           });
       } else if (matchByDegree && matchBySubject) {
-        console.log('degree and subject');
-        db.collection('users')
-          .where('degree.id', '==', firstUser.degree.id)
-          .where('subjects.ids', 'array-contains-any', firstUser.subjects.ids)
+        console.log("degree and subject");
+        db.collection("users")
+          .where("degree.id", "==", firstUser.degree.id)
+          .where("subjects.ids", "array-contains-any", firstUser.subjects.ids)
           .get()
           .then((snapshot) => {
             let results = [];
@@ -611,7 +612,7 @@ app.post('/match', FBauth, (req, res) => {
 
             if (filtered.length === 0) {
               return res.json({
-                error: 'No available matches. Please widen your match options.',
+                error: "No available matches. Please widen your match options.",
               });
             }
             let result = filtered[Math.floor(Math.random() * filtered.length)];
@@ -620,9 +621,9 @@ app.post('/match', FBauth, (req, res) => {
             });
           });
       } else if (matchByDegree && !matchBySubject && !matchByPersonality) {
-        console.log('just degree');
-        db.collection('users')
-          .where('degree.id', '==', firstUser.degree.id)
+        console.log("just degree");
+        db.collection("users")
+          .where("degree.id", "==", firstUser.degree.id)
           .get()
           .then((snapshot) => {
             let results = [];
@@ -642,7 +643,7 @@ app.post('/match', FBauth, (req, res) => {
 
             if (filtered.length === 0) {
               return res.json({
-                error: 'No available matches. Please widen your match options.',
+                error: "No available matches. Please widen your match options.",
               });
             }
             let result = filtered[Math.floor(Math.random() * filtered.length)];
@@ -651,9 +652,9 @@ app.post('/match', FBauth, (req, res) => {
             });
           });
       } else if (!matchByDegree && matchBySubject && !matchByPersonality) {
-        console.log('just subject');
-        db.collection('users')
-          .where('subjects.ids', 'array-contains-any', firstUser.subjects.ids)
+        console.log("just subject");
+        db.collection("users")
+          .where("subjects.ids", "array-contains-any", firstUser.subjects.ids)
           .get()
           .then((snapshot) => {
             let results = [];
@@ -673,7 +674,7 @@ app.post('/match', FBauth, (req, res) => {
 
             if (filtered.length === 0) {
               return res.json({
-                error: 'No available matches. Please widen your match options.',
+                error: "No available matches. Please widen your match options.",
               });
             }
             let result = filtered[Math.floor(Math.random() * filtered.length)];
@@ -682,8 +683,8 @@ app.post('/match', FBauth, (req, res) => {
             });
           });
       } else if (!matchByDegree && !matchBySubject && matchByPersonality) {
-        console.log('just personality');
-        db.collection('users')
+        console.log("just personality");
+        db.collection("users")
           .get()
           .then((snapshot) => {
             let results = [];
@@ -703,7 +704,7 @@ app.post('/match', FBauth, (req, res) => {
 
             if (filtered.length === 0) {
               return res.json({
-                error: 'You have matched with everyone possible!.',
+                error: "You have matched with everyone possible!.",
               });
             }
 
@@ -713,8 +714,8 @@ app.post('/match', FBauth, (req, res) => {
             });
           });
       } else if (!matchByDegree && !matchBySubject && !matchByPersonality) {
-        console.log('No matching options');
-        db.collection('users')
+        console.log("No matching options");
+        db.collection("users")
           .get()
           .then((snapshot) => {
             let results = [];
@@ -735,7 +736,7 @@ app.post('/match', FBauth, (req, res) => {
             // console.log(filtered)
             if (filtered.length === 0) {
               return res.json({
-                error: 'You have matched with everyone possible!.',
+                error: "You have matched with everyone possible!.",
               });
             }
 
@@ -750,7 +751,7 @@ app.post('/match', FBauth, (req, res) => {
             );
           });
       } else {
-        return res.json({ error: 'you are not supposed to do this' });
+        return res.json({ error: "you are not supposed to do this" });
       }
     })
     .catch((err) => {
@@ -759,15 +760,15 @@ app.post('/match', FBauth, (req, res) => {
     });
 });
 
-app.get('/matches', FBauth, (req, res) => {
-  db.collection('matches')
-    .where('users', 'array-contains', req.user.email)
-    .orderBy('latestMessageTimestamp', 'desc')
+app.get("/matches", FBauth, (req, res) => {
+  db.collection("matches")
+    .where("users", "array-contains", req.user.email)
+    .orderBy("latestMessageTimestamp", "desc")
     .get()
     .then((snapshot) => {
       let results = [];
       if (snapshot.isEmpty) {
-        console.log('the snapshot is empty lol');
+        console.log("the snapshot is empty lol");
       }
       snapshot.forEach((doc) => {
         let info = {
@@ -784,25 +785,25 @@ app.get('/matches', FBauth, (req, res) => {
     });
 });
 
-app.patch('/avatar', FBauth, (req, res) => {
+app.patch("/avatar", FBauth, (req, res) => {
   db.doc(`users/${req.user.email}`)
     .update({
-      'avatar.topType': req.body.topType,
-      'avatar.hairColour': req.body.hairColour,
-      'avatar.skinColour': req.body.skinColour,
-      'avatar.clotheType': req.body.clotheType,
+      "avatar.topType": req.body.topType,
+      "avatar.hairColour": req.body.hairColour,
+      "avatar.skinColour": req.body.skinColour,
+      "avatar.clotheType": req.body.clotheType,
     })
     .then((data) => {
       res.json({ data });
-      db.collection('matches')
-        .where('users', 'array-contains', req.user.email)
+      db.collection("matches")
+        .where("users", "array-contains", req.user.email)
         .get()
         .then((snapshot) => {
           if (!snapshot.empty) {
             snapshot.forEach((doc) => {
               if (doc.data().userInfo.userOne.email === req.user.email) {
                 doc.ref.update({
-                  'userInfo.userOne.avatar': {
+                  "userInfo.userOne.avatar": {
                     topType: req.body.topType,
                     hairColour: req.body.hairColour,
                     skinColour: req.body.skinColour,
@@ -811,7 +812,7 @@ app.patch('/avatar', FBauth, (req, res) => {
                 });
               } else if (doc.data().userInfo.userTwo.email === req.user.email) {
                 doc.ref.update({
-                  'userInfo.userTwo.avatar': {
+                  "userInfo.userTwo.avatar": {
                     topType: req.body.topType,
                     hairColour: req.body.hairColour,
                     skinColour: req.body.skinColour,
@@ -824,21 +825,21 @@ app.patch('/avatar', FBauth, (req, res) => {
         });
     })
     .catch((err) => {
-      res.json({ error: 'Something went wrong' });
+      res.json({ error: "Something went wrong" });
     });
 });
 
-app.patch('/matches', (req, res) => {
+app.patch("/matches", (req, res) => {
   console.log(req.body.timestamp);
   db.doc(`matches/${req.body.id}`)
     .update({
       latestMessage: req.body.message,
       latestMessageTimestamp: admin.firestore.Timestamp.now(),
     })
-    .then(res.status(200).json({ ok: 'cool it was created ' }))
+    .then(res.status(200).json({ ok: "cool it was created " }))
     .catch((err) => {
       res.status(400).json({ err });
-      console.log('uh oh');
+      console.log("uh oh");
     });
 });
 
@@ -877,4 +878,4 @@ app.patch('/matches', (req, res) => {
 
 // createSubjects()
 
-exports.api = functions.region('australia-southeast1').https.onRequest(app);
+exports.api = functions.region("australia-southeast1").https.onRequest(app);
